@@ -1,0 +1,5 @@
+ZKitaplastir.exe
+pdb/
+pdfler/
+*.pdb
+*.obj

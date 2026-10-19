@@ -1,0 +1,3 @@
+This project bundles dwebp.exe from libwebp 1.4.0.
+libwebp is Copyright (c) 2010 Google Inc. and is distributed under the
+BSD 3-Clause License. See https://github.com/webmproject/libwebp
