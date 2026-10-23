@@ -155,8 +155,7 @@ class ZKitaplastir
                                     buf[i + 8] == 0x57 && buf[i + 9] == 0x45 && buf[i + 10] == 0x42 && buf[i + 11] == 0x50)
                                 {
                                     uint sz = BitConverter.ToUInt32(buf, (int)i + 4); long tot = (long)sz + 8;
-                                    if (sz > 80000 && tot < 30L * 1024 * 1024 && (i + tot) <= n
-                                        && buf[i + 12] == 0x56 && buf[i + 13] == 0x50 && buf[i + 14] == 0x38 && buf[i + 15] == 0x20)
+                                    if (sz > 80000 && tot < 30L * 1024 * 1024 && (i + tot) <= n)
                                     {
                                         byte[] img = new byte[tot]; Array.Copy(buf, i, img, 0, tot);
                                         string key = BitConverter.ToString(sha.ComputeHash(img));
@@ -300,7 +299,7 @@ class ZKitaplastir
     static int Main(string[] args)
     {
         int wantPages = -1, intervalMs = 800, settleMs = 650, autoMiss = 10, rewind = 0, targetW = 1000; long quality = 68;
-        int dupThresh = 5; string outPath = null; bool noPause = false; string logPath = null; bool keepRaw = false;
+        int dupThresh = 5; string outPath = null; bool noPause = false; string logPath = null; bool keepRaw = false; bool oddOnly = true;
         for (int i = 0; i < args.Length; i++)
         {
             switch (args[i])
@@ -317,6 +316,8 @@ class ZKitaplastir
                 case "-nopause": noPause = true; break;
                 case "-log": logPath = args[++i]; break;
                 case "-keepraw": keepRaw = true; break;
+                case "-odd": oddOnly = true; break;
+                case "-noodd": oddOnly = false; break;
             }
         }
         exeDir = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
@@ -398,6 +399,7 @@ class ZKitaplastir
         {
             string png = Path.Combine(tmp, i + ".png"); int w, h;
             if (!DecodeWebp(pages[i], png, out w, out h)) { continue; }
+            if (oddOnly && (i % 2 == 1)) { try { File.Delete(png); } catch { } continue; }
             byte[] gray = Gray64(png); bool dup = false;
             if (dupThresh >= 0) { for (int k = 0; k < keptGray.Count; k++) if (MAD(gray, keptGray[k]) < dupThresh) { dup = true; break; } }
             if (!dup)
