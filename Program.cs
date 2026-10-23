@@ -230,6 +230,18 @@ class ZKitaplastir
         return (double)s / a.Length;
     }
 
+    static double Ink(string pngPath)
+    {
+        using (Image img = Image.FromFile(pngPath))
+        using (Bitmap b = new Bitmap(200, 266))
+        {
+            using (Graphics g = Graphics.FromImage(b)) { g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBilinear; g.DrawImage(img, 0, 0, 200, 266); }
+            int dark = 0;
+            for (int y = 0; y < 266; y++) for (int x = 0; x < 200; x++) { Color c = b.GetPixel(x, y); int v = (c.R * 299 + c.G * 587 + c.B * 114) / 1000; if (v < 235) dark++; }
+            return (double)dark / (200 * 266);
+        }
+    }
+
     static int Hamming(ulong a, ulong b) { ulong x = a ^ b; int c = 0; while (x != 0) { c += (int)(x & 1UL); x >>= 1; } return c; }
 
     static byte[] PngToJpeg(string pngPath, int targetW, long quality)
@@ -299,7 +311,7 @@ class ZKitaplastir
     static int Main(string[] args)
     {
         int wantPages = -1, intervalMs = 800, settleMs = 650, autoMiss = 10, rewind = 0, targetW = 1000; long quality = 68;
-        int dupThresh = 5; string outPath = null; bool noPause = false; string logPath = null; bool keepRaw = false; bool oddOnly = true;
+        int dupThresh = 5; string outPath = null; bool noPause = false; string logPath = null; bool keepRaw = false; bool oddOnly = false;
         for (int i = 0; i < args.Length; i++)
         {
             switch (args[i])
@@ -390,22 +402,26 @@ class ZKitaplastir
         }
         L("Yakalama bitti: " + pages.Count + " goruntu");
 
-        L("PDF uretiliyor (tekillestirme=" + dupThresh + ")...");
+        L("PDF uretiliyor (tekillestirme=" + dupThresh + ", grup icinde az murekkep=tamiz)...");
         string tmp = Path.Combine(Path.GetTempPath(), "zk_" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(tmp);
-        List<byte[]> keptGray = new List<byte[]>();
+        List<byte[]> cGray = new List<byte[]>(); List<double> cInk = new List<double>();
         List<byte[]> jpegs = new List<byte[]>(); List<int> ws = new List<int>(), hs = new List<int>();
         int kept = 0;
         for (int i = 0; i < pages.Count; i++)
         {
             string png = Path.Combine(tmp, i + ".png"); int w, h;
             if (!DecodeWebp(pages[i], png, out w, out h)) { continue; }
-            if (oddOnly && (i % 2 == 1)) { try { File.Delete(png); } catch { } continue; }
-            byte[] gray = Gray64(png); bool dup = false;
-            if (dupThresh >= 0) { for (int k = 0; k < keptGray.Count; k++) if (MAD(gray, keptGray[k]) < dupThresh) { dup = true; break; } }
-            if (!dup)
+            byte[] gray = Gray64(png); double ink = Ink(png); int hit = -1;
+            if (dupThresh >= 0) { for (int k = 0; k < cGray.Count; k++) if (MAD(gray, cGray[k]) < dupThresh) { hit = k; break; } }
+            if (hit < 0)
             {
-                keptGray.Add(gray); byte[] jpg = PngToJpeg(png, targetW, quality);
-                if (jpg != null) { using (MemoryStream ms = new MemoryStream(jpg)) using (Image im = Image.FromStream(ms)) { ws.Add(im.Width); hs.Add(im.Height); } jpegs.Add(jpg); kept++; }
+                byte[] jpg = PngToJpeg(png, targetW, quality);
+                if (jpg != null) { using (MemoryStream ms = new MemoryStream(jpg)) using (Image im = Image.FromStream(ms)) { ws.Add(im.Width); hs.Add(im.Height); } jpegs.Add(jpg); cGray.Add(gray); cInk.Add(ink); kept++; }
+            }
+            else if (ink < cInk[hit])
+            {
+                byte[] jpg = PngToJpeg(png, targetW, quality);
+                if (jpg != null) { using (MemoryStream ms = new MemoryStream(jpg)) using (Image im = Image.FromStream(ms)) { ws[hit] = im.Width; hs[hit] = im.Height; } jpegs[hit] = jpg; cGray[hit] = gray; cInk[hit] = ink; }
             }
             try { File.Delete(png); } catch { }
             if (i % 40 == 0) L("  " + i + "/" + pages.Count + " tekil=" + kept);

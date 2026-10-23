@@ -47,7 +47,6 @@ On Windows, run `build.bat`. It uses the .NET Framework compiler (`csc.exe`) and
 | `-out PATH` | Explicit output PDF path |
 | `-log PATH` | Write a log file |
 | `-keepraw` | Do not delete `pdfler\_raw` after building |
-| `-noodd` | Keep every capture instead of only odd-numbered ones (default keeps odd) |
 | `-nopause` | Do not wait for key presses (unattended) |
 
 ## Notes and limitations
@@ -55,8 +54,7 @@ On Windows, run `build.bat`. It uses the .NET Framework compiler (`csc.exe`) and
 - The tool captures the page images the reader decrypts and renders; it does not break any DRM.
 - Page turning uses the PageDown key delivered to the reader window.
 - If the reader window is closed, the tool stops.
-- Answers that are already revealed in the reader will appear in the PDF; hide them in the reader first.
-- By default the tool keeps only **odd-numbered** captures. When the reader stores an answered copy of a page next to the clean one, this keeps the clean page and drops the answered duplicate. Use `-noodd` to keep every capture.
+- Each page is usually captured twice: once with the answer overlay and once clean. Near-identical captures are grouped, and the tool keeps the version with the **least ink** (the clean page) for every group, so answers are removed automatically.
 
 ## Third-party
 
